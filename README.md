@@ -1,5 +1,7 @@
 # FactFrame (Chrome extension)
 
+FactFrame — fact-check YouTube captions in real time using web search (Tavily, Exa, Perplexity, or Brave) and your LLM.
+
 **FactFrame** is built with **[WXT](https://wxt.dev/)** (Manifest V3, Vite-powered).
 
 While you watch a video on YouTube, FactFrame shows a **right-hand panel** that loads **captions** (when available), periodically takes a **rolling window** of recent caption text, runs **web search** (your choice of provider), and asks your **OpenAI-compatible LLM** to return structured **fact-check verdicts** with source URLs.
