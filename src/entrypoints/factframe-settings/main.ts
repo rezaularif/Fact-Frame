@@ -41,6 +41,7 @@ function init(): void {
     fillSettingsForm(settingsEl, s);
     wireSettingsForm(settingsEl, {
       loadSettings,
+      enableChangeDetection: true,
       onTranslucencyInput: (percent) => {
         applyTranslucencyVariables(root, percent);
       },

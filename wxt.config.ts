@@ -4,15 +4,12 @@ export default defineConfig({
   srcDir: "src",
   outDir: "dist",
   manifest: {
-    name: "FactFrame",
+    name: "FactFrame - Fact-Check YouTube Captions",
     version: "0.1.0",
     description:
       "FactFrame — fact-check YouTube captions in real time using web search (Tavily, Exa, Perplexity, or Brave) and your LLM.",
-    permissions: ["storage", "activeTab", "windows"],
+    permissions: ["storage"],
     host_permissions: [
-      "https://www.youtube.com/*",
-      "https://m.youtube.com/*",
-      "https://api.tavily.com/*",
       "https://*/*",
     ],
     icons: {

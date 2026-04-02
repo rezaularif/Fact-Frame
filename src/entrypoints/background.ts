@@ -125,13 +125,7 @@ export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener((details) => {
     if (details.reason !== "install") return;
     const url = chrome.runtime.getURL("factframe-settings.html");
-    chrome.windows.create({
-      url,
-      type: "normal",
-      width: 580,
-      height: 760,
-      focused: true,
-    });
+    chrome.tabs.create({ url });
   });
 
   chrome.runtime.onMessage.addListener(
