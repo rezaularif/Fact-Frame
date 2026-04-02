@@ -149,8 +149,10 @@ function isYoutubeHomepage(): boolean {
   return p === "/" || p === "";
 }
 
-function syncPanelVisibilityForUrl(root: HTMLElement): void {
-  root.style.display = isYoutubeHomepage() ? "none" : "flex";
+function syncPanelVisibilityForUrl(root: HTMLElement, fab: HTMLElement): void {
+  const isHomepage = isYoutubeHomepage();
+  root.style.display = isHomepage ? "none" : "flex";
+  fab.classList.toggle("ytc-fab--hidden", isHomepage);
 }
 
 function ensurePanel(): HTMLElement {
@@ -742,7 +744,7 @@ export default defineContentScript({
     const root = ensurePanel();
     const fab = ensureFab();
     const { headerEl, statusEl, statusBodyEl, verdictsEl, settingsEl, resizeHandle, minimizeBtn } = buildPanelUi(root);
-    syncPanelVisibilityForUrl(root);
+    syncPanelVisibilityForUrl(root, fab);
 
     let isMinimized = false;
     const setMinimized = (min: boolean): void => {
@@ -992,7 +994,7 @@ export default defineContentScript({
 
     async function onNav(): Promise<void> {
       if (!chrome.runtime?.id) return;
-      syncPanelVisibilityForUrl(root);
+      syncPanelVisibilityForUrl(root, fab);
       const id = getVideoIdFromLocation(location.href);
       if (!id) {
         videoId = null;

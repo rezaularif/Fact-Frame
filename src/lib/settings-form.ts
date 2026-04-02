@@ -1,4 +1,4 @@
-import { SAVE_CHANGES_LABEL, SAVE_PENDING_LABEL, SAVE_SAVING_LABEL, SAVE_FEEDBACK_MS, YTC_KEY_CLEAR_ICON } from "./panel-constants";
+import { SAVE_CHANGES_LABEL, SAVE_SAVING_LABEL, SAVE_FEEDBACK_MS, YTC_KEY_CLEAR_ICON } from "./panel-constants";
 import type { ExtensionSettings, SearchProvider } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 
@@ -279,7 +279,7 @@ export function updateSaveButtonState(
   switch (state) {
     case "pending":
       btn.classList.add("ytc-btn-save--pending");
-      btn.textContent = SAVE_PENDING_LABEL;
+      btn.textContent = SAVE_CHANGES_LABEL;
       break;
     case "saving":
       btn.classList.add("ytc-btn-save--saving");
@@ -374,7 +374,7 @@ export function flashSettingsSaveFeedback(settingsEl: HTMLElement, kind: "succes
       const hasChanges = checkPendingChanges(settingsEl);
       if (hasChanges) {
         btn.classList.add("ytc-btn-save--pending");
-        btn.textContent = SAVE_PENDING_LABEL;
+      btn.textContent = SAVE_CHANGES_LABEL;
       } else {
         btn.textContent = SAVE_CHANGES_LABEL;
       }
@@ -395,6 +395,11 @@ export function wireSettingsForm(
     enableChangeDetection?: boolean;
   },
 ): void {
+  // Prevent duplicate event listeners if called multiple times on the same element
+  const WIRED_KEY = "_ffFormWired";
+  if ((settingsEl as HTMLElement & { [WIRED_KEY]?: boolean })[WIRED_KEY]) return;
+  (settingsEl as HTMLElement & { [WIRED_KEY]?: boolean })[WIRED_KEY] = true;
+
   const enableChangeDetection = options.enableChangeDetection ?? false;
   // Track changes on inputs, selects, and checkboxes (only if enabled)
   const trackInputChanges = () => {
@@ -448,12 +453,11 @@ export function wireSettingsForm(
       await saveSettingsFromForm(settingsEl);
       updateApiKeyDots(settingsEl);
       const next = await options.loadSettings();
-      // Update lastSavedSettings to reflect newly saved values (only if tracking)
-      if (enableChangeDetection) {
-        const state = getFormState(settingsEl);
-        state.lastSavedSettings = { ...next };
-        setFormState(settingsEl, state);
-      }
+      // Always update lastSavedSettings after successful save to prevent
+      // successful saves from looking like unsaved changes
+      const state = getFormState(settingsEl);
+      state.lastSavedSettings = { ...next };
+      setFormState(settingsEl, state);
       await options.onSaved(next);
       flashSettingsSaveFeedback(settingsEl, "success");
     } catch (e) {

@@ -47,7 +47,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   llmProvider: "openai",
   llmOpenAiKey: "",
   llmAnthropicKey: "",
-  llmModel: "",
+  llmModel: "gpt-4o-mini",
   checkIntervalSec: 45,
   windowSec: 90,
   twoStagePipeline: true,

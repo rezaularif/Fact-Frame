@@ -925,6 +925,11 @@ export function getFabCss(fabId: string): string {
 #${fabId}.ytc-fab--dragging {
   transition: none !important;
 }
+/* Hidden state for homepage */
+#${fabId}.ytc-fab--hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 `;
 }
 

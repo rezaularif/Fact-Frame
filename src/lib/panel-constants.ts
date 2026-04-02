@@ -3,7 +3,6 @@ export const PANEL_STYLE_ID = "ytc-fact-checker-styles";
 export const PANEL_FAB_ID = "ytc-fact-checker-fab";
 
 export const SAVE_CHANGES_LABEL = "Save changes";
-export const SAVE_PENDING_LABEL = "Save changes";
 export const SAVE_SAVING_LABEL = "Saving\u2026";
 export const SAVE_FEEDBACK_MS = 2800;
 
