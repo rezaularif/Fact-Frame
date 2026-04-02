@@ -1,8 +1,20 @@
-import { SAVE_CHANGES_LABEL, SAVE_FEEDBACK_MS, YTC_KEY_CLEAR_ICON } from "./panel-constants";
+import { SAVE_CHANGES_LABEL, SAVE_SAVING_LABEL, SAVE_FEEDBACK_MS, YTC_KEY_CLEAR_ICON } from "./panel-constants";
 import type { ExtensionSettings, SearchProvider } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 
-let settingsSaveFeedbackClearTimer: number | null = null;
+// Per-instance state attached to form elements
+interface FormState {
+  lastSavedSettings: ExtensionSettings | null;
+  saveFeedbackClearTimer: number | null;
+}
+
+function getFormState(settingsEl: HTMLElement): FormState {
+  return (settingsEl as HTMLElement & { _ffFormState?: FormState })._ffFormState ?? { lastSavedSettings: null, saveFeedbackClearTimer: null };
+}
+
+function setFormState(settingsEl: HTMLElement, state: FormState): void {
+  (settingsEl as HTMLElement & { _ffFormState?: FormState })._ffFormState = state;
+}
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -212,6 +224,10 @@ export function updateLlmProviderRows(settingsEl: HTMLElement): void {
 }
 
 export function fillSettingsForm(settingsEl: HTMLElement, s: ExtensionSettings): void {
+  const state = getFormState(settingsEl);
+  state.lastSavedSettings = { ...s };
+  setFormState(settingsEl, state);
+  updateSaveButtonState(settingsEl, "idle");
   settingsEl.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-k]").forEach((input) => {
     const k = input.dataset.k as keyof ExtensionSettings;
     if (k === "twoStagePipeline" || k === "includeFullTranscriptInPrompt") {
@@ -252,13 +268,80 @@ export async function saveSettingsFromForm(settingsEl: HTMLElement): Promise<voi
   await chrome.storage.local.set(next);
 }
 
+/** Update the save button visual state: idle, pending, saving, success, error */
+export function updateSaveButtonState(
+  settingsEl: HTMLElement,
+  state: "idle" | "pending" | "saving" | "success" | "error",
+): void {
+  const btn = settingsEl.querySelector<HTMLButtonElement>("[data-save]");
+  if (!btn) return;
+  btn.classList.remove("ytc-btn-save--success", "ytc-btn-save--error", "ytc-btn-save--pending", "ytc-btn-save--saving");
+  switch (state) {
+    case "pending":
+      btn.classList.add("ytc-btn-save--pending");
+      btn.textContent = SAVE_CHANGES_LABEL;
+      break;
+    case "saving":
+      btn.classList.add("ytc-btn-save--saving");
+      btn.textContent = SAVE_SAVING_LABEL;
+      break;
+    case "success":
+      btn.classList.add("ytc-btn-save--success");
+      btn.textContent = "Saved";
+      break;
+    case "error":
+      btn.classList.add("ytc-btn-save--error");
+      break;
+    default:
+      btn.textContent = SAVE_CHANGES_LABEL;
+  }
+}
+
+/** Check if current form values differ from last saved settings */
+export function checkPendingChanges(settingsEl: HTMLElement): boolean {
+  const state = getFormState(settingsEl);
+  if (!state.lastSavedSettings) return false;
+  const current = getCurrentFormValues(settingsEl);
+  const keys = Object.keys(current) as (keyof ExtensionSettings)[];
+  return keys.some((k) => {
+    const saved = state.lastSavedSettings![k];
+    const now = current[k];
+    if (typeof saved === "boolean") return saved !== Boolean(now);
+    if (typeof saved === "number") return saved !== Number(now);
+    return String(saved ?? "") !== String(now ?? "");
+  });
+}
+
+/** Get current values from the form as partial settings */
+function getCurrentFormValues(settingsEl: HTMLElement): Partial<ExtensionSettings> {
+  const current: Partial<ExtensionSettings> = {};
+  settingsEl.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-k]").forEach((input) => {
+    const k = input.dataset.k as keyof ExtensionSettings;
+    if (k === "twoStagePipeline" || k === "includeFullTranscriptInPrompt") {
+      current[k] = (input as HTMLInputElement).checked as ExtensionSettings[typeof k];
+    } else if (k === "checkIntervalSec" || k === "windowSec" || k === "translucencyPercent") {
+      current[k] = Number((input as HTMLInputElement).value) as ExtensionSettings[typeof k];
+    } else {
+      current[k] = input.value as ExtensionSettings[typeof k];
+    }
+  });
+  return current;
+}
+
+/** Call this whenever a form input changes to update pending state */
+function onFormChanged(settingsEl: HTMLElement): void {
+  const hasChanges = checkPendingChanges(settingsEl);
+  updateSaveButtonState(settingsEl, hasChanges ? "pending" : "idle");
+}
+
 /** Visible only inside settings (status bar is hidden while settings are open on YouTube). */
 export function flashSettingsSaveFeedback(settingsEl: HTMLElement, kind: "success" | "error", errorDetail?: string): void {
+  const state = getFormState(settingsEl);
   const feedback = settingsEl.querySelector<HTMLElement>("[data-save-feedback]");
   const btn = settingsEl.querySelector<HTMLButtonElement>("[data-save]");
-  if (settingsSaveFeedbackClearTimer !== null) {
-    window.clearTimeout(settingsSaveFeedbackClearTimer);
-    settingsSaveFeedbackClearTimer = null;
+  if (state.saveFeedbackClearTimer !== null) {
+    window.clearTimeout(state.saveFeedbackClearTimer);
+    state.saveFeedbackClearTimer = null;
   }
   if (feedback) {
     feedback.classList.remove("ytc-save-feedback--success", "ytc-save-feedback--error");
@@ -272,7 +355,7 @@ export function flashSettingsSaveFeedback(settingsEl: HTMLElement, kind: "succes
     feedback.hidden = false;
   }
   if (btn) {
-    btn.classList.remove("ytc-btn-save--success", "ytc-btn-save--error");
+    btn.classList.remove("ytc-btn-save--success", "ytc-btn-save--error", "ytc-btn-save--saving");
     if (kind === "success") {
       btn.classList.add("ytc-btn-save--success");
       btn.textContent = "Saved";
@@ -280,18 +363,26 @@ export function flashSettingsSaveFeedback(settingsEl: HTMLElement, kind: "succes
       btn.classList.add("ytc-btn-save--error");
     }
   }
-  settingsSaveFeedbackClearTimer = window.setTimeout(() => {
+  state.saveFeedbackClearTimer = window.setTimeout(() => {
     if (feedback) {
       feedback.textContent = "";
       feedback.classList.remove("ytc-save-feedback--success", "ytc-save-feedback--error");
       feedback.hidden = true;
     }
     if (btn) {
-      btn.classList.remove("ytc-btn-save--success", "ytc-btn-save--error");
+      btn.classList.remove("ytc-btn-save--success", "ytc-btn-save--error", "ytc-btn-save--saving");
+      const hasChanges = checkPendingChanges(settingsEl);
+      if (hasChanges) {
+        btn.classList.add("ytc-btn-save--pending");
       btn.textContent = SAVE_CHANGES_LABEL;
+      } else {
+        btn.textContent = SAVE_CHANGES_LABEL;
+      }
     }
-    settingsSaveFeedbackClearTimer = null;
+    state.saveFeedbackClearTimer = null;
+    setFormState(settingsEl, state);
   }, SAVE_FEEDBACK_MS);
+  setFormState(settingsEl, state);
 }
 
 export function wireSettingsForm(
@@ -301,8 +392,19 @@ export function wireSettingsForm(
     onTranslucencyInput: (percent: number) => void;
     onSaved: (settings: ExtensionSettings) => void | Promise<void>;
     onKeyCleared?: (key: keyof ExtensionSettings) => void;
+    enableChangeDetection?: boolean;
   },
 ): void {
+  // Prevent duplicate event listeners if called multiple times on the same element
+  const WIRED_KEY = "_ffFormWired";
+  if ((settingsEl as HTMLElement & { [WIRED_KEY]?: boolean })[WIRED_KEY]) return;
+  (settingsEl as HTMLElement & { [WIRED_KEY]?: boolean })[WIRED_KEY] = true;
+
+  const enableChangeDetection = options.enableChangeDetection ?? false;
+  // Track changes on inputs, selects, and checkboxes (only if enabled)
+  const trackInputChanges = () => {
+    if (enableChangeDetection) onFormChanged(settingsEl);
+  };
   settingsEl.querySelector<HTMLInputElement>('[data-k="translucencyPercent"]')?.addEventListener("input", () => {
     const range = settingsEl.querySelector<HTMLInputElement>('[data-k="translucencyPercent"]');
     const v = range ? Number(range.value) : NaN;
@@ -310,12 +412,21 @@ export function wireSettingsForm(
       options.onTranslucencyInput(v);
       updateTranslucencyHint(settingsEl);
     }
+    trackInputChanges();
   });
   settingsEl.querySelector<HTMLSelectElement>('[data-k="searchProvider"]')?.addEventListener("change", () => {
     updateSearchProviderKeyRows(settingsEl);
+    trackInputChanges();
   });
   settingsEl.querySelector<HTMLSelectElement>('[data-k="llmProvider"]')?.addEventListener("change", () => {
     updateLlmProviderRows(settingsEl);
+    trackInputChanges();
+  });
+  settingsEl.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-k]').forEach((checkbox) => {
+    checkbox.addEventListener("change", trackInputChanges);
+  });
+  settingsEl.querySelectorAll<HTMLInputElement>('input[data-k]:not([type="checkbox"])').forEach((input) => {
+    input.addEventListener("input", trackInputChanges);
   });
   settingsEl.addEventListener("input", () => {
     updateApiKeyDots(settingsEl);
@@ -332,13 +443,21 @@ export function wireSettingsForm(
     input.value = "";
     await chrome.storage.local.set({ [k]: "" });
     updateApiKeyDots(settingsEl);
+    trackInputChanges();
     options.onKeyCleared?.(k as keyof ExtensionSettings);
   });
   settingsEl.querySelector("[data-save]")?.addEventListener("click", async () => {
     try {
+      // Set button to saving state (only if change detection is enabled)
+      if (enableChangeDetection) updateSaveButtonState(settingsEl, "saving");
       await saveSettingsFromForm(settingsEl);
       updateApiKeyDots(settingsEl);
       const next = await options.loadSettings();
+      // Always update lastSavedSettings after successful save to prevent
+      // successful saves from looking like unsaved changes
+      const state = getFormState(settingsEl);
+      state.lastSavedSettings = { ...next };
+      setFormState(settingsEl, state);
       await options.onSaved(next);
       flashSettingsSaveFeedback(settingsEl, "success");
     } catch (e) {

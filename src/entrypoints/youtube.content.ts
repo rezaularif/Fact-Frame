@@ -12,8 +12,8 @@ import {
 } from "../lib/captions";
 import { applyTranslucencyVariables } from "../lib/apply-translucency";
 import { EXTENSION_SETTINGS_STORAGE_KEYS, loadExtensionSettings } from "../lib/load-extension-settings";
-import { getPanelCss } from "../lib/panel-css";
-import { PANEL_ID, PANEL_STYLE_ID } from "../lib/panel-constants";
+import { getFabCss, getPanelCss } from "../lib/panel-css";
+import { PANEL_FAB_ID, PANEL_ID, PANEL_STYLE_ID } from "../lib/panel-constants";
 import {
   fillSettingsForm,
   getSettingsFormInnerHtml,
@@ -37,6 +37,8 @@ const STORAGE_PANEL_LEFT = "ytcPanelLeft";
 const STORAGE_PANEL_TOP = "ytcPanelTop";
 const STORAGE_PANEL_WIDTH = "ytcPanelWidth";
 const STORAGE_PANEL_HEIGHT = "ytcPanelHeight";
+const STORAGE_PANEL_MINIMIZED = "ytcPanelMinimized";
+const STORAGE_FAB_TOP = "ytcFabTop";
 
 const STORAGE_KEYS = EXTENSION_SETTINGS_STORAGE_KEYS;
 
@@ -44,6 +46,12 @@ const STORAGE_KEYS = EXTENSION_SETTINGS_STORAGE_KEYS;
 const PANEL_HEADER_SETTINGS_ICON_GEAR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="16" height="16" aria-hidden="true"><g fill="currentColor"><path d="M14.5,8.25h-5.067L6.899,3.862c-.207-.359-.667-.481-1.024-.274-.359,.207-.481,.666-.274,1.024l2.534,4.388-2.534,4.389c-.207,.359-.084,.817,.274,1.024,.118,.068,.247,.101,.375,.101,.259,0,.511-.134,.65-.375l2.534-4.389h5.067c.414,0,.75-.336,.75-.75s-.336-.75-.75-.75Z"/><path d="M16.25,8.25h-1.049c-.072-.597-.225-1.169-.453-1.702l.906-.523c.359-.207,.481-.666,.274-1.024-.207-.359-.666-.481-1.024-.274l-.913,.527c-.354-.471-.773-.889-1.243-1.243l.527-.914c.207-.359,.084-.817-.274-1.024-.358-.208-.817-.085-1.024,.274l-.523,.906c-.533-.229-1.105-.381-1.702-.453V1.75c0-.414-.336-.75-.75-.75s-.75,.336-.75,.75v1.049c-.597,.072-1.169,.225-1.702,.453l-.523-.906c-.208-.359-.667-.482-1.024-.274-.359,.207-.481,.666-.274,1.024l.527,.914c-.471,.354-.889,.772-1.243,1.243l-.913-.527c-.357-.207-.817-.085-1.024,.274-.207,.359-.084,.817,.274,1.024l.906,.523c-.228,.533-.381,1.105-.453,1.702H1.75c-.414,0-.75,.336-.75,.75s.336,.75,.75,.75h1.049c.072,.597,.225,1.169,.453,1.702l-.906,.523c-.359,.207-.481,.666-.274,1.024,.139,.241,.391,.375,.65,.375,.127,0,.256-.032,.375-.101l.913-.527c.354,.471,.773,.889,1.243,1.243l-.527,.914c-.207,.359-.084,.817,.274,1.024,.118,.068,.247,.101,.375,.101,.259,0,.511-.134,.65-.375l.523-.906c.533,.229,1.105,.381,1.702,.453v1.049c0,.414,.336,.75,.75,.75s.75-.336,.75-.75v-1.049c.597-.072,1.169-.225,1.702-.453l.523,.906c.139,.241,.391,.375,.65,.375,.127,0,.256-.032,.375-.101,.359-.207,.481-.666,.274-1.024l-.527-.914c.471-.354,.889-.772,1.243-1.243l.913,.527c.118,.068,.247,.101,.375,.101,.259,0,.511-.134,.65-.375,.207-.359,.084-.817-.274-1.024l-.906-.523c.228-.533,.381-1.105,.453-1.702h1.049c.414,0,.75-.336,.75-.75s-.336-.75-.75-.75Zm-7.25,5.5c-2.619,0-4.75-2.131-4.75-4.75s2.131-4.75,4.75-4.75,4.75,2.131,4.75,4.75-2.131,4.75-4.75,4.75Z"/></g></svg>`;
 
 const PANEL_HEADER_SETTINGS_ICON_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`;
+
+/** Minimize icon: a horizontal line (dash). */
+const PANEL_HEADER_MINIMIZE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6 12.5h12v-1H6z"/></svg>`;
+
+/** Small FactFrame logo for the FAB (simplified ring mark). */
+const FAB_LOGO_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="20" height="20" aria-hidden="true"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-dasharray="2 5"/><circle cx="60" cy="60" r="38" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="3 4"/><circle cx="60" cy="60" r="24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/><rect x="52" y="52" width="16" height="16" rx="2" fill="rgba(255,255,255,0.92)"/></svg>`;
 
 function statusCaptionsReady(_settings: ExtensionSettings): string {
   return "Ready. Fact-checks run while the video plays.";
@@ -116,7 +124,7 @@ function injectPanelStyles(): void {
   if (document.getElementById(PANEL_STYLE_ID)) return;
   const style = document.createElement("style");
   style.id = PANEL_STYLE_ID;
-  style.textContent = getPanelCss(PANEL_ID);
+  style.textContent = getPanelCss(PANEL_ID) + getFabCss(PANEL_FAB_ID);
   document.head.appendChild(style);
 }
 
@@ -141,8 +149,10 @@ function isYoutubeHomepage(): boolean {
   return p === "/" || p === "";
 }
 
-function syncPanelVisibilityForUrl(root: HTMLElement): void {
-  root.style.display = isYoutubeHomepage() ? "none" : "flex";
+function syncPanelVisibilityForUrl(root: HTMLElement, fab: HTMLElement): void {
+  const isHomepage = isYoutubeHomepage();
+  root.style.display = isHomepage ? "none" : "flex";
+  fab.classList.toggle("ytc-fab--hidden", isHomepage);
 }
 
 function ensurePanel(): HTMLElement {
@@ -172,6 +182,21 @@ function ensurePanel(): HTMLElement {
   return root;
 }
 
+function ensureFab(): HTMLElement {
+  let fab = document.getElementById(PANEL_FAB_ID);
+  if (fab) return fab;
+
+  fab = el("div", { id: PANEL_FAB_ID });
+  const iconWrap = el("div");
+  iconWrap.className = "ytc-fab-icon";
+  iconWrap.innerHTML = FAB_LOGO_ICON;
+  fab.appendChild(iconWrap);
+  fab.title = "Restore FactFrame";
+  
+  document.documentElement.appendChild(fab);
+  return fab;
+}
+
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
@@ -198,6 +223,7 @@ function clampPanelSizeAndPosition(root: HTMLElement): void {
 }
 
 async function applySavedPanelSize(root: HTMLElement): Promise<void> {
+  if (!chrome.runtime?.id) return;
   const raw = await chrome.storage.local.get([STORAGE_PANEL_WIDTH, STORAGE_PANEL_HEIGHT]);
   const maxW = Math.min(PANEL_WIDTH_MAX, window.innerWidth - 16);
   const maxH = Math.min(PANEL_HEIGHT_MAX, window.innerHeight - 16);
@@ -211,6 +237,7 @@ async function applySavedPanelSize(root: HTMLElement): Promise<void> {
 }
 
 async function applySavedPanelPosition(root: HTMLElement): Promise<void> {
+  if (!chrome.runtime?.id) return;
   const raw = await chrome.storage.local.get([STORAGE_PANEL_LEFT, STORAGE_PANEL_TOP]);
   const w = root.offsetWidth || PANEL_WIDTH_DEFAULT;
   const h = () => root.offsetHeight || PANEL_HEIGHT_DEFAULT;
@@ -234,6 +261,30 @@ async function applySavedPanelPosition(root: HTMLElement): Promise<void> {
   root.style.top = `${top}px`;
   root.style.right = "auto";
   root.style.bottom = "auto";
+}
+
+async function applySavedMinimizedState(root: HTMLElement, fab: HTMLElement): Promise<boolean> {
+  if (!chrome.runtime?.id) return false;
+  const raw = await chrome.storage.local.get([STORAGE_PANEL_MINIMIZED]);
+  const minimized = !!raw[STORAGE_PANEL_MINIMIZED];
+  root.classList.toggle("ytc-panel--minimized", minimized);
+  fab.classList.toggle("ytc-fab--visible", minimized);
+  return minimized;
+}
+
+async function applySavedFabPosition(fab: HTMLElement): Promise<void> {
+  if (!chrome.runtime?.id) return;
+  const raw = await chrome.storage.local.get([STORAGE_FAB_TOP]);
+  const pad = 4;
+  const h = fab.offsetHeight || 36;
+  let top: number;
+  if (typeof raw[STORAGE_FAB_TOP] === "number") {
+    top = raw[STORAGE_FAB_TOP] as number;
+  } else {
+    top = window.innerHeight / 2 - h / 2;
+  }
+  top = clamp(top, pad, Math.max(pad, window.innerHeight - h - pad));
+  fab.style.top = `${top}px`;
 }
 
 function attachPanelDrag(root: HTMLElement, handles: HTMLElement[]): void {
@@ -272,10 +323,12 @@ function attachPanelDrag(root: HTMLElement, handles: HTMLElement[]): void {
     window.removeEventListener("mouseup", onUp);
     const left = parseFloat(root.style.left) || 0;
     const top = parseFloat(root.style.top) || 0;
-    void chrome.storage.local.set({
-      [STORAGE_PANEL_LEFT]: Math.round(left),
-      [STORAGE_PANEL_TOP]: Math.round(top),
-    });
+    if (chrome.runtime?.id) {
+      void chrome.storage.local.set({
+        [STORAGE_PANEL_LEFT]: Math.round(left),
+        [STORAGE_PANEL_TOP]: Math.round(top),
+      });
+    }
   };
 
   const onDown = (e: MouseEvent): void => {
@@ -344,10 +397,12 @@ function attachPanelResize(root: HTMLElement, handle: HTMLElement): void {
     document.body.style.removeProperty("cursor");
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("mouseup", onUp);
-    void chrome.storage.local.set({
-      [STORAGE_PANEL_WIDTH]: Math.round(root.offsetWidth),
-      [STORAGE_PANEL_HEIGHT]: Math.round(root.offsetHeight),
-    });
+    if (chrome.runtime?.id) {
+      void chrome.storage.local.set({
+        [STORAGE_PANEL_WIDTH]: Math.round(root.offsetWidth),
+        [STORAGE_PANEL_HEIGHT]: Math.round(root.offsetHeight),
+      });
+    }
   };
 
   handle.addEventListener("mousedown", (e: MouseEvent) => {
@@ -366,6 +421,59 @@ function attachPanelResize(root: HTMLElement, handle: HTMLElement): void {
   });
 }
 
+function attachFabDragAndClick(fab: HTMLElement, onRestore: () => void): void {
+  let dragStartY = 0;
+  let originTop = 0;
+  let dragging = false;
+  let moved = false;
+  
+  const onMove = (e: MouseEvent): void => {
+    if (!dragging) return;
+    moved = true;
+    fab.classList.add("ytc-fab--dragging");
+    const h = fab.offsetHeight;
+    const pad = 4;
+    let top = originTop + (e.clientY - dragStartY);
+    top = clamp(top, pad, Math.max(pad, window.innerHeight - h - pad));
+    fab.style.top = `${top}px`;
+  };
+  
+  const onUp = (e: MouseEvent): void => {
+    if (!dragging) return;
+    dragging = false;
+    fab.classList.remove("ytc-fab--dragging");
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    
+    if (moved) {
+      const top = parseFloat(fab.style.top) || 0;
+      if (chrome.runtime?.id) void chrome.storage.local.set({ [STORAGE_FAB_TOP]: Math.round(top) });
+    } else {
+      onRestore();
+    }
+  };
+  
+  fab.addEventListener("mousedown", (e: MouseEvent) => {
+    if (e.button !== 0) return; // Only left click
+    e.preventDefault();
+    dragging = true;
+    moved = false;
+    dragStartY = e.clientY;
+    originTop = fab.getBoundingClientRect().top;
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+  
+  const reflowClamp = (): void => {
+    const pad = 4;
+    const h = fab.offsetHeight || 36;
+    const rawTop = parseFloat(fab.style.top) || 0;
+    const top = clamp(rawTop, pad, Math.max(pad, window.innerHeight - h - pad));
+    fab.style.top = `${top}px`;
+  };
+  window.addEventListener("resize", reflowClamp);
+}
+
 function buildPanelUi(root: HTMLElement): {
   headerEl: HTMLElement;
   statusEl: HTMLElement;
@@ -373,6 +481,7 @@ function buildPanelUi(root: HTMLElement): {
   verdictsEl: HTMLElement;
   settingsEl: HTMLElement;
   resizeHandle: HTMLElement;
+  minimizeBtn: HTMLButtonElement;
   toggleSettings: () => void;
 } {
   root.innerHTML = "";
@@ -385,6 +494,14 @@ function buildPanelUi(root: HTMLElement): {
   mainRow.className = "ytc-header-main";
   const title = el("div", { textContent: "FactFrame" });
   title.className = "ytc-title";
+
+  const minimizeBtn = el("button") as HTMLButtonElement;
+  minimizeBtn.type = "button";
+  minimizeBtn.className = "ytc-btn-minimize";
+  minimizeBtn.setAttribute("aria-label", "Minimize panel");
+  minimizeBtn.title = "Minimize";
+  minimizeBtn.innerHTML = PANEL_HEADER_MINIMIZE_ICON;
+
   const settingsBtn = el("button") as HTMLButtonElement;
   settingsBtn.type = "button";
   settingsBtn.className = "ytc-btn-ghost ytc-btn-icon";
@@ -399,7 +516,7 @@ function buildPanelUi(root: HTMLElement): {
   settingsModeHint.innerHTML =
     "Set API keys, model, and timing below. Use <strong>Back</strong> (top right) to return to fact-checks.";
 
-  mainRow.append(title, settingsBtn);
+  mainRow.append(title, minimizeBtn, settingsBtn);
 
   const hero = el("div");
   hero.className = "ytc-hero";
@@ -462,6 +579,7 @@ function buildPanelUi(root: HTMLElement): {
     verdictsEl,
     settingsEl,
     resizeHandle,
+    minimizeBtn,
     toggleSettings,
   };
 }
@@ -624,14 +742,33 @@ export default defineContentScript({
   runAt: "document_idle",
   main() {
     const root = ensurePanel();
-    const { headerEl, statusEl, statusBodyEl, verdictsEl, settingsEl, resizeHandle } = buildPanelUi(root);
-    syncPanelVisibilityForUrl(root);
+    const fab = ensureFab();
+    const { headerEl, statusEl, statusBodyEl, verdictsEl, settingsEl, resizeHandle, minimizeBtn } = buildPanelUi(root);
+    syncPanelVisibilityForUrl(root, fab);
+
+    let isMinimized = false;
+    const setMinimized = (min: boolean): void => {
+      isMinimized = min;
+      root.classList.toggle("ytc-panel--minimized", min);
+      fab.classList.toggle("ytc-fab--visible", min);
+      if (chrome.runtime?.id) void chrome.storage.local.set({ [STORAGE_PANEL_MINIMIZED]: min });
+    };
+
+    minimizeBtn.addEventListener("click", () => {
+      setMinimized(true);
+    });
+
+    attachFabDragAndClick(fab, () => {
+      setMinimized(false);
+    });
 
     let cachedSettings: ExtensionSettings = DEFAULT_SETTINGS;
 
     void (async () => {
       await applySavedPanelSize(root);
       await applySavedPanelPosition(root);
+      isMinimized = await applySavedMinimizedState(root, fab);
+      await applySavedFabPosition(fab);
       attachPanelDrag(root, [headerEl, statusEl]);
       attachPanelResize(root, resizeHandle);
     })();
@@ -653,10 +790,6 @@ export default defineContentScript({
         onSaved: async (next) => {
           cachedSettings = next;
           applyTranslucencyVariables(root, next.translucencyPercent);
-          setPanelStatus(root, statusBodyEl, {
-            message: "Settings saved.",
-            variant: "idle",
-          });
         },
         onKeyCleared: (k) => {
           cachedSettings = { ...cachedSettings, [k]: "" } as ExtensionSettings;
@@ -673,6 +806,10 @@ export default defineContentScript({
     let inFlight = false;
     /** Rolling list for the current video; cleared on new video or leaving watch. */
     let accumulatedVerdicts: FactVerdict[] = [];
+    /** Track last excerpt sent to avoid re-checking overlapping caption windows. */
+    let lastExcerptSent = "";
+    /** Cooldown counter — skip N ticks after an error to avoid hammering APIs. */
+    let errorCooldownTicks = 0;
 
     function stopDomSampling(): void {
       if (domSampleTimer) {
@@ -741,19 +878,35 @@ export default defineContentScript({
         timer = null;
       }
       void loadSettings().then((s) => {
+        cachedSettings = s;
         const ms = Math.max(15, s.checkIntervalSec) * 1000;
         timer = setInterval(() => void tick(), ms);
+        // Fire first tick immediately so users don't wait a full interval.
+        void tick();
       });
     }
 
     async function tick(): Promise<void> {
-      const s = await loadSettings();
-      cachedSettings = s;
+      if (!chrome.runtime?.id) {
+        if (timer) clearInterval(timer);
+        timer = null;
+        return;
+      }
+      
+      // Use cached settings instead of reading storage every tick.
+      // The storage.onChanged listener keeps cachedSettings fresh.
+      const s = cachedSettings;
       const id = getVideoIdFromLocation(location.href);
       if (!id || id !== videoId) return;
 
       const v = getVideoEl();
       if (!v || v.paused || v.ended) return;
+
+      // Skip ticks during error cooldown to avoid hammering APIs.
+      if (errorCooldownTicks > 0) {
+        errorCooldownTicks--;
+        return;
+      }
 
       let excerpt = "";
       let fullTranscript: string | undefined;
@@ -761,6 +914,11 @@ export default defineContentScript({
       if (domCaptionMode) {
         const txt = collectCaptionTextFromDom();
         appendDomCaptionSample(domBuffer, v.currentTime, txt);
+        // Trim old samples to prevent unbounded memory growth.
+        const minKeepSec = Math.max(0, v.currentTime - s.windowSec * 2);
+        while (domBuffer.length > 0 && domBuffer[0].timeSec < minKeepSec) {
+          domBuffer.shift();
+        }
         excerpt = domBufferToExcerpt(domBuffer, s.windowSec, v.currentTime);
         fullTranscript = s.includeFullTranscriptInPrompt ? domBufferToFullTranscript(domBuffer, 16000) : undefined;
       } else {
@@ -770,6 +928,10 @@ export default defineContentScript({
       }
 
       if (!excerpt.trim()) return;
+
+      // Skip if the excerpt hasn't changed enough since the last check
+      // to avoid wasting LLM tokens on overlapping caption windows.
+      if (lastExcerptSent && excerpt === lastExcerptSent) return;
 
       if (inFlight) return;
       inFlight = true;
@@ -796,19 +958,31 @@ export default defineContentScript({
           return;
         }
         const batch = res.verdicts ?? [];
-        if (batch.length) {
-          accumulatedVerdicts.push(...batch);
+        const existingKeys = new Set(
+          accumulatedVerdicts.map((v) => v.claim.trim().toLowerCase().replace(/\s+/g, " ")),
+        );
+        const uniqueBatch = batch.filter((v) => {
+          const key = v.claim.trim().toLowerCase().replace(/\s+/g, " ");
+          if (existingKeys.has(key)) return false;
+          existingKeys.add(key);
+          return true;
+        });
+        if (uniqueBatch.length) {
+          accumulatedVerdicts.push(...uniqueBatch);
           if (accumulatedVerdicts.length > MAX_ACCUMULATED_VERDICTS) {
             accumulatedVerdicts = accumulatedVerdicts.slice(-MAX_ACCUMULATED_VERDICTS);
           }
         }
-        renderAccumulatedVerdicts(verdictsEl, accumulatedVerdicts, { scrollToBottom: batch.length > 0 });
+        renderAccumulatedVerdicts(verdictsEl, accumulatedVerdicts, { scrollToBottom: uniqueBatch.length > 0 });
         setPanelStatus(root, statusBodyEl, {
           message: statusLastFactCheck(s),
           variant: "idle",
         });
+        lastExcerptSent = excerpt;
       } catch (e) {
         stopCheckingCycle();
+        // Back off for 2 ticks on error to avoid hammering failing APIs.
+        errorCooldownTicks = 2;
         setPanelStatus(root, statusBodyEl, {
           message: e instanceof Error ? e.message : "Something went wrong. Try again.",
           variant: "error",
@@ -819,7 +993,8 @@ export default defineContentScript({
     }
 
     async function onNav(): Promise<void> {
-      syncPanelVisibilityForUrl(root);
+      if (!chrome.runtime?.id) return;
+      syncPanelVisibilityForUrl(root, fab);
       const id = getVideoIdFromLocation(location.href);
       if (!id) {
         videoId = null;
@@ -844,9 +1019,12 @@ export default defineContentScript({
 
     // Do NOT use MutationObserver on document — YouTube mutates the DOM constantly and
     // firing navigation logic on every subtree change can freeze or crash the browser.
+    // Events (yt-navigate-finish, popstate) catch most navigations;
+    // this poll is a safety net — 2s is plenty.
     window.setInterval(() => {
+      if (!chrome.runtime?.id) return;
       void onNav();
-    }, 800);
+    }, 2000);
     window.addEventListener("yt-navigate-finish", () => void onNav());
     window.addEventListener("popstate", () => void onNav());
     void onNav();

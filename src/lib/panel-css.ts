@@ -520,6 +520,38 @@ export function getPanelCss(panelId: string): string {
   color: rgba(255, 220, 220, 0.98);
   transform: none;
 }
+#${panelId} .ytc-btn-save.ytc-btn-save--pending {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: rgba(255, 235, 180, 0.98);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.12), 0 2px 10px rgba(251, 191, 36, 0.1);
+}
+#${panelId} .ytc-btn-save.ytc-btn-save--pending:hover {
+  background: rgba(251, 191, 36, 0.24);
+  border-color: rgba(251, 191, 36, 0.55) !important;
+}
+#${panelId} .ytc-btn-save.ytc-btn-save--saving {
+  background: rgba(96, 165, 250, 0.18);
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  color: rgba(220, 235, 255, 0.98);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.12), 0 2px 10px rgba(96, 165, 250, 0.1);
+  cursor: wait;
+}
+#${panelId} .ytc-btn-save.ytc-btn-save--saving::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  animation: ytc-btn-spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+@keyframes ytc-btn-spin {
+  to { transform: rotate(360deg); }
+}
 #${panelId} .ytc-save-feedback {
   font-size: 11px;
   font-weight: 600;
@@ -551,8 +583,13 @@ export function getPanelCss(panelId: string): string {
   font-family: var(--ytc-sans);
   font-size: 12px;
   line-height: 1.35;
-  color: var(--ytc-bright);
+  color: var(--ytc-text);
   white-space: pre-line;
+  transition: color 0.22s ease;
+}
+#${panelId}:hover .ytc-status-body,
+#${panelId}:focus-within .ytc-status-body {
+  color: var(--ytc-bright);
 }
 #${panelId} .ytc-verdicts {
   flex: 1;
@@ -781,6 +818,117 @@ export function getPanelCss(panelId: string): string {
 }
 #${panelId} a.ytc-src-link:hover {
   color: var(--ytc-link-hover) !important;
+}
+
+/* ── Minimize button in header ── */
+#${panelId} .ytc-btn-minimize {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 5px;
+  background: rgba(255, 255, 255, var(--ytc-idle-ghost, 0.06));
+  color: var(--ytc-text);
+  border: 1px solid var(--ytc-border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  transition: background 0.22s ease, border-color 0.22s ease;
+}
+#${panelId}:hover .ytc-btn-minimize,
+#${panelId}:focus-within .ytc-btn-minimize {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+#${panelId} .ytc-btn-minimize:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+#${panelId} .ytc-btn-minimize svg {
+  display: block;
+}
+/* ── Panel minimized state ── */
+#${panelId}.ytc-panel--minimized {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: scale(0.92) translateX(30px);
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+`;
+}
+
+/** CSS for the mini floating action button on the right edge. */
+export function getFabCss(fabId: string): string {
+  return `
+#${fabId} {
+  position: fixed;
+  z-index: 999998;
+  right: 0;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateX(0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px 0 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: none;
+  background: linear-gradient(
+    165deg,
+    rgba(18, 18, 20, 0.92) 0%,
+    rgba(24, 24, 28, 0.95) 100%
+  );
+  box-shadow:
+    -4px 2px 16px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  transition: width 0.2s ease, background 0.18s ease, box-shadow 0.18s ease, opacity 0.2s ease, transform 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+#${fabId}.ytc-fab--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#${fabId}:hover {
+  width: 42px;
+  background: linear-gradient(
+    165deg,
+    rgba(28, 28, 32, 0.96) 0%,
+    rgba(32, 32, 38, 0.98) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    -6px 4px 22px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+#${fabId}:active {
+  transform: translateX(2px);
+}
+#${fabId} .ytc-fab-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+#${fabId} .ytc-fab-icon svg {
+  display: block;
+}
+/* Dragging state — no transitions during drag */
+#${fabId}.ytc-fab--dragging {
+  transition: none !important;
+}
+/* Hidden state for homepage */
+#${fabId}.ytc-fab--hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 `;
 }
