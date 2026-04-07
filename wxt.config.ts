@@ -5,7 +5,7 @@ export default defineConfig({
   outDir: "dist",
   manifest: {
     name: "FactFrame - Fact-Check YouTube Captions",
-    version: "0.1.0",
+    version: "0.1.1",
     description:
       "FactFrame — fact-check YouTube captions in real time using web search (Tavily, Exa, Perplexity, or Brave) and your LLM.",
     permissions: ["storage"],
